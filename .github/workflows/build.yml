@@ -40,19 +40,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
         pip install playwright
-        pip install -r requirements.txt || echo "No requirements.txt"
       shell: bash
     
     - name: Build with PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --name dopenagent-windows --add-data "system_prompt.txt;." agent.py
+        pyinstaller --onefile --name dopenagent-windows agent.py
       shell: bash
     
     - name: Build with PyInstaller (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        pyinstaller --onefile --name dopenagent-linux --add-data "system_prompt.txt:." agent.py
+        pyinstaller --onefile --name dopenagent-linux agent.py
       shell: bash
     
     - name: Upload artifact
