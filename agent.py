@@ -7,7 +7,13 @@ import re
 import subprocess
 import sys
 import html
+import time
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+
+
+# Устанавливаем переменные окружения для Playwright
+os.environ['PLAYWRIGHT_BROWSERS_PATH'] = os.path.expanduser('~/.cache/ms-playwright')
+os.environ['PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD'] = '1'
 
 
 class DeepSeekParser:
@@ -29,6 +35,27 @@ class DeepSeekParser:
         self.config_dir = os.path.join(appdata, '.dopenagent')
         os.makedirs(self.config_dir, exist_ok=True)
         self.creds_file = os.path.join(self.config_dir, 'creds.json')
+        
+        # Проверяем наличие браузера
+        self.ensure_browser()
+
+    def ensure_browser(self):
+        """Проверяет наличие браузера и скачивает если нужно"""
+        browsers_path = os.environ.get('PLAYWRIGHT_BROWSERS_PATH', os.path.expanduser('~/.cache/ms-playwright'))
+        chromium_path = os.path.join(browsers_path, 'chromium-1234')
+        
+        if not os.path.exists(chromium_path):
+            print("[BROWSER] Browser not found, downloading...")
+            try:
+                subprocess.run(
+                    [sys.executable, '-m', 'playwright', 'install', 'chromium'],
+                    capture_output=True,
+                    text=True
+                )
+                print("[BROWSER] Browser downloaded successfully")
+            except Exception as e:
+                print(f"[BROWSER] Failed to download: {e}")
+                print("[BROWSER] Please run: playwright install chromium")
 
     def load_creds(self):
         try:
@@ -370,7 +397,6 @@ class DeepSeekParser:
         checked_id = start_message_id
         max_checks = 0
         last_text = ""
-        found_end = False
         
         print(f"[WAIT] Checking messages from ID {checked_id}")
         
@@ -423,30 +449,6 @@ class DeepSeekParser:
 
 ВАЖНО: В конце каждого ответа добавляй END_OF_MESSAGE"""
 
-        try:
-            with open(os.path.join(self.current_dir, "system_prompt.txt"), "w", encoding="utf-8") as f:
-                f.write(system_prompt)
-            print("[LOAD] System prompt created")
-        except:
-            pass
-
-        prompt_files = ["system_prompt.txt", "system_promt.txt"]
-        prompt_content = None
-        
-        for filename in prompt_files:
-            path = os.path.join(self.current_dir, filename)
-            if os.path.exists(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    prompt_content = f.read().strip()
-                print(f"[LOAD] System prompt from {filename}")
-                break
-        
-        if not prompt_content:
-            print("[ERR] system_prompt.txt not found")
-            return
-            
-        system_prompt = prompt_content
-
         print("[INIT] Sending system prompt...")
         if not await self.send_message(system_prompt):
             print("[ERR] Failed to send system prompt")
@@ -458,10 +460,6 @@ class DeepSeekParser:
             print(f"\n[SYSTEM RESPONSE]\n{response}\n")
         else:
             print("[ERR] No system prompt response")
-            print("[INFO] Checking all existing messages...")
-            messages = await self.get_all_messages()
-            for msg in messages:
-                print(f"[MSG] ID {msg['id']}: {msg['text'][:100]}...")
 
         while True:
             print("\n" + "-"*60)
