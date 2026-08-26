@@ -35,18 +35,38 @@ jobs:
       with:
         python-version: '3.10'
     
-    - name: Install dependencies
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
         pip install playwright
-        pip install -r requirements.txt || true
+        pip install -r requirements.txt || echo "No requirements.txt"
         playwright install chromium
         playwright install-deps
+      shell: bash
     
-    - name: Build with PyInstaller
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
-        pyinstaller --onefile --name dopenagent-${{ matrix.target }} agent.py
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install playwright
+        pip install -r requirements.txt || echo "No requirements.txt"
+        playwright install chromium
+        playwright install-deps
+      shell: bash
+    
+    - name: Build with PyInstaller (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        pyinstaller --onefile --name dopenagent-windows --add-data "system_prompt.txt;." agent.py
+      shell: bash
+    
+    - name: Build with PyInstaller (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        pyinstaller --onefile --name dopenagent-linux --add-data "system_prompt.txt:." agent.py
       shell: bash
     
     - name: Upload artifact
@@ -88,8 +108,8 @@ jobs:
     - name: List artifacts
       run: |
         ls -la artifacts/
-        ls -la artifacts/dopenagent-windows/ || true
-        ls -la artifacts/dopenagent-linux/ || true
+        ls -la artifacts/dopenagent-windows/ || echo "No windows artifact"
+        ls -la artifacts/dopenagent-linux/ || echo "No linux artifact"
     
     - name: Create Release with all artifacts
       uses: softprops/action-gh-release@v1
